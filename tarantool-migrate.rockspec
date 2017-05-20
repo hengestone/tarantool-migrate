@@ -8,7 +8,7 @@ source = {
 
 description = {
   summary = "Migration helper for Tarantool",
-  homepage = "https://github.com/tarantool/tarantool-lua",
+  homepage = "https://github.com/hengestone/tarantool-migrate",
   maintainer = "Conrad Steenberg <conrad.steenberg@gmail.com>",
   license = "MPLv2"
 }
