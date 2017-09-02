@@ -15,17 +15,23 @@ description = {
 
 dependencies = {
   "lua ~> 5.1",
-  "lua-tarantool"
+  "lua-tarantool",
+  "inspect",
+  "luafilesystem",
+  "lua-path",
+  "lualogging"
 }
 
 build = {
   type = "builtin",
   modules = {
     ["tarantool-migrate"] = "tarantool-migrate.lua",
+    ["migrate"] = "migrate.runt"
   },
   install = {
     lua = {
       ["tarantool-migrate"] = "tarantool-migrate.lua",
+      ["migrate"] = "migrate.runt"
     }
   }
 }

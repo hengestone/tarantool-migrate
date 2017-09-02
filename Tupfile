@@ -1,1 +1,4 @@
 : foreach *.moon |> moonc -o %B.lua %f |> %B.lua
+: foreach *.mrunt |> moonc -o %B.runt %f |> %B.runt
+: foreach migrate/*.moon |> moonc -o migrate/%B.lua %f |> migrate/%B.lua
+: foreach config/*.moon |> moonc -o config/%B.lua %f |> config/%B.lua

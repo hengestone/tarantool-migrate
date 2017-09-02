@@ -1,0 +1,31 @@
+-- migrate.mrunt
+package.path = "?.lua;" .. package.path
+migrator = require "tarantool-migrate"
+inspect = require "inspect"
+
+initdb = (runt) =>
+  dbconfig = runt.config.db
+  m = migrator(dbconfig)
+  if m.err
+    runt.logger\fatal("Unable to connect to database: #{m.err}")
+    return false, m.err
+  m
+
+tasks =
+  all:
+    depends: nil
+    task: (spec, args, runt) ->
+      runt.logger\debug(spec)
+      m = initdb(runt)
+      m\migrate_dir("migrate")
+    done: nil
+  revert:
+    depends: nil
+    task: (spec, args, runt) ->
+      runt.logger\debug(spec)
+      m = initdb(runt)
+      m\reverrt("migrate")
+    done: nil
+
+tasks.default = tasks.all
+tasks
