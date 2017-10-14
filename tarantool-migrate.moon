@@ -4,6 +4,8 @@ os = require "os"
 lfs = require "lfs"
 path = require "path"
 inspect = require "inspect"
+logging = require "logging"
+
 
 local _addmethod
 
@@ -55,13 +57,14 @@ return {
 }
 "
 
-  new: (args) =>
+  new: (args, logger) =>
     @tar, err = tarantool(args)
     if @tar.err
       @err = @tar.err
       return @tar, err
     @meta = _addmethod({obj: @tar}, "")
     @bootstrapped = false
+    @logger = logger or logging.new(@_appender)
 
   migration_up: (migration, index, name) =>
     tar\disable_lookups()
@@ -77,6 +80,7 @@ return {
   migration_down: (migration, index) =>
     tar\disable_lookups()
     res, err = migration.down(self)
+
     tar\enable_lookups()
     if res
       res, err = @tar\delete("migrations", index)
@@ -132,6 +136,10 @@ return {
   create_lua: (dir, name) =>
     @create_raw(dir or "migrate", name, @@lua_template, "lua")
 
+  _appender = (obj, level, msg) ->
+    io.write("#{level} #{string.rep(' ', 5 - #level)}")
+    io.write("#{msg}\n")
+
   _list_files_sorted: (dir) =>
     ndir = path.normalize(dir)
     fullpath, err = path.isdir(ndir)
@@ -142,7 +150,7 @@ return {
     for fname in lfs.dir(ndir)
       table.insert(dirs, fname)
     table.sort(dirs)
-    return dirs
+    dirs
 
   _relpath: (dir, fname) =>
     fullpath = path.fullpath(fname)
@@ -154,14 +162,15 @@ return {
 
   list_files: (dir) =>
     fnames = @_list_files_sorted(dir)
+    @logger\debug("list_files:\n" .. inspect(fnames))
     result = {}
     for i, fname in ipairs(fnames)
       index, name = string.match(fname, "(%d+)_(.*).lua")
-      if index and name and path.isfile(fname)
+      if index and name and path.isfile(path.join(dir, fname))
         table.insert(result, fname)
     result
 
-  migrate_dir: (dir) =>
+  migrate_dir: (dir, one) =>
     ok, err = @bootstrap()
     if not ok
       print("Unable to bootstrap database: #{err}")
@@ -175,6 +184,8 @@ return {
           res, err = @migrate_one({[index]: dofile(relname)}, name)
           if not res
             io.stderr\write('Exiting\n')
+            break
+          if one
             break
 
   migrate_one: (migration, name) =>
@@ -193,17 +204,17 @@ return {
         return mtime, err
 
   list: () =>
-    m.tar\select("migrations", "primary")
+    @tar\select("migrations", "primary")
 
   revert: (dir) =>
-    res, err = m.meta.box.space.migrations.index.time\max()
+    res, err = self.meta.box.space.migrations.index.time\max()
     if err
       return nil, err
     lastname = res[1]
     if lastname == "1" --  the bootstrap migration
       return true, nil
 
-    fnames = _list_files(dir or "migrate")
+    fnames = @list_files(dir or "migrate")
     for i, fname in ipairs(fnames)
       index, name = string.match(fname, "(%d+)_(.*).lua")
       if lastname == index

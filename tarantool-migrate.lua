@@ -3,6 +3,7 @@ local os = require("os")
 local lfs = require("lfs")
 local path = require("path")
 local inspect = require("inspect")
+local logging = require("logging")
 local _addmethod
 local _exec
 _exec = function(self, proc, ...)
@@ -44,6 +45,7 @@ end
 local Migrator
 do
   local _class_0
+  local _appender
   local _base_0 = {
     migration_up = function(self, migration, index, name)
       tar:disable_lookups()
@@ -150,16 +152,17 @@ do
     end,
     list_files = function(self, dir)
       local fnames = self:_list_files_sorted(dir)
+      self.logger:debug("list_files:\n" .. inspect(fnames))
       local result = { }
       for i, fname in ipairs(fnames) do
         local index, name = string.match(fname, "(%d+)_(.*).lua")
-        if index and name and path.isfile(fname) then
+        if index and name and path.isfile(path.join(dir, fname)) then
           table.insert(result, fname)
         end
       end
       return result
     end,
-    migrate_dir = function(self, dir)
+    migrate_dir = function(self, dir, one)
       local ok, err = self:bootstrap()
       if not ok then
         print("Unable to bootstrap database: " .. tostring(err))
@@ -176,6 +179,9 @@ do
             }, name)
             if not res then
               io.stderr:write('Exiting\n')
+              break
+            end
+            if one then
               break
             end
           end
@@ -202,10 +208,10 @@ do
       end
     end,
     list = function(self)
-      return m.tar:select("migrations", "primary")
+      return self.tar:select("migrations", "primary")
     end,
     revert = function(self, dir)
-      local res, err = m.meta.box.space.migrations.index.time:max()
+      local res, err = self.meta.box.space.migrations.index.time:max()
       if err then
         return nil, err
       end
@@ -213,7 +219,7 @@ do
       if lastname == "1" then
         return true, nil
       end
-      local fnames = _list_files(dir or "migrate")
+      local fnames = self:list_files(dir or "migrate")
       for i, fname in ipairs(fnames) do
         local index, name = string.match(fname, "(%d+)_(.*).lua")
         if lastname == index then
@@ -224,7 +230,7 @@ do
   }
   _base_0.__index = _base_0
   _class_0 = setmetatable({
-    __init = function(self, args)
+    __init = function(self, args, logger)
       local err
       self.tar, err = tarantool(args)
       if self.tar.err then
@@ -235,6 +241,7 @@ do
         obj = self.tar
       }, "")
       self.bootstrapped = false
+      self.logger = logger or logging.new(self._appender)
     end,
     __base = _base_0,
     __name = "Migrator"
@@ -276,6 +283,10 @@ do
   }
   self.__class.lua_template = "-- migration created by migrate.moon\nreturn {\n  up = function(migrator) -- forward migration\n  end,\n  down = function(migrator) -- backward migration\n  end\n}\n  "
   self.__class.moon_template = "-- migration created by migrate.moon\n{\n  up: (migrator) ->\n    -- forward migration\n  down: (migrator) ->\n    -- backward migration\n}\n"
+  _appender = function(obj, level, msg)
+    io.write(tostring(level) .. " " .. tostring(string.rep(' ', 5 - #level)))
+    return io.write(tostring(msg) .. "\n")
+  end
   Migrator = _class_0
 end
 return Migrator

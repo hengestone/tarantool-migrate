@@ -26,12 +26,11 @@ build = {
   type = "builtin",
   modules = {
     ["tarantool-migrate"] = "tarantool-migrate.lua",
-    ["migrate"] = "migrate.runt"
   },
   install = {
     lua = {
       ["tarantool-migrate"] = "tarantool-migrate.lua",
-      ["migrate"] = "migrate.runt"
+      ["runt.tmigrate"] = "migrate.runt"
     }
   }
 }
