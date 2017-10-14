@@ -30,7 +30,7 @@ build = {
   install = {
     lua = {
       ["tarantool-migrate"] = "tarantool-migrate.lua",
-      ["runt.tmigrate"] = "migrate.runt"
+      ["runt.migrate"] = "migrate.runt"
     }
   }
 }
