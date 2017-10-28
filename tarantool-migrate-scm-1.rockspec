@@ -19,7 +19,8 @@ dependencies = {
   "inspect",
   "luafilesystem",
   "lua-path",
-  "lualogging"
+  "lualogging",
+  "runt"
 }
 
 build = {
@@ -30,7 +31,7 @@ build = {
   install = {
     lua = {
       ["tarantool-migrate"] = "tarantool-migrate.lua",
-      ["runt.migrate"] = "migrate.runt"
+      ["tmigrate.runt"] = "tmigrate.runt"
     }
   }
 }

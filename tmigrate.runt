@@ -1,0 +1,75 @@
+package.path = "?.lua;" .. package.path
+local migrator = require("tarantool-migrate")
+local inspect = require("inspect")
+local initdb
+initdb = function(runt)
+  local dbconfig = runt.config.db
+  runt.logger:debug(inspect(dbconfig))
+  local m = migrator(dbconfig, runt.logger)
+  if m.err then
+    runt.logger:fatal("Unable to connect to database: " .. tostring(m.err))
+    return false, m.err
+  end
+  return m
+end
+local tasks = {
+  all = {
+    depends = nil,
+    task = function(spec, args, runt)
+      runt.logger:debug(spec)
+      local m = initdb(runt)
+      return m:migrate_dir(runt.config.migrations.dir or "migrate")
+    end,
+    done = nil
+  },
+  one = {
+    depends = nil,
+    task = function(spec, args, runt)
+      runt.logger:debug(spec)
+      local m = initdb(runt)
+      return m:migrate_dir(runt.config.migrations.dir or "migrate", true)
+    end,
+    done = nil
+  },
+  revert = {
+    depends = nil,
+    task = function(spec, args, runt)
+      runt.logger:debug(spec)
+      local m = initdb(runt)
+      return m:revert("migrate")
+    end,
+    done = nil
+  },
+  list = {
+    depends = nil,
+    task = function(spec, args, runt)
+      runt.logger:debug(spec)
+      local m = initdb(runt)
+      local migdata, err = m:list()
+      if err then
+        return runt.logger:fatal(error)
+      else
+        for i, mi in ipairs(migdata) do
+          print(tostring(mi[2]) .. ": " .. tostring(mi[1]))
+        end
+      end
+    end,
+    done = nil
+  },
+  list_files = {
+    depends = nil,
+    task = function(spec, args, runt)
+      runt.logger:debug(spec)
+      local m = initdb(runt)
+      local files, err = m:list_files(runt.config.migrations.dir or "migrate")
+      if not err then
+        for i, fname in ipairs(files) do
+          print(fname)
+        end
+      end
+    end,
+    done = nil
+  }
+}
+tasks.default = tasks.all
+return tasks
